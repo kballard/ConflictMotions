@@ -144,7 +144,12 @@ function! s:CaptureSection()
     set clipboard= " Avoid clobbering the selection and clipboard registers.
     let l:save_reg = getreg('"')
     let l:save_regmode = getregtype('"')
+    let l:save_vb = &vb
+    let l:save_t_vb = &t_vb
+    set vb t_vb= " avoid beeping for an empty section
 	silent execute printf('normal yi%s', g:ConflictMotions_SectionMapping)
+    let &vb=l:save_vb
+    let &t_vb=l:save_t_vb
 	let l:section = @"
     call setreg('"', l:save_reg, l:save_regmode)
     let &clipboard = l:save_clipboard
@@ -273,12 +278,17 @@ function! ConflictMotions#TakeFromConflict( conflictCnt, currentLnum, startLnum,
 	endif
     endfor
 
+    let l:whole_file = [a:startLnum, a:endLnum] == [1, line('$')]
     execute (empty(l:sections) ? '' : 'silent') printf('%d,%ddelete _', a:startLnum, a:endLnum)
     if empty(l:sections)
 	return (a:endLnum - a:startLnum + 1)
     else
 	let l:prevLineCnt = line('$')
-	call ingo#lines#PutWrapper(a:startLnum, 'put!', l:sections)
+	call ingo#lines#PutBefore(a:startLnum, l:sections)
+	if l:whole_file
+	    " there's a blank line left over at the end
+	    silent execute printf('%ddelete _', line('$'))
+	endif
 	return (a:endLnum - a:startLnum + 1) - (line('$') - l:prevLineCnt)
     endif
 endfunction
